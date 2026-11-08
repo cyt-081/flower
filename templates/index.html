@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>校园失物招领 · 云端版</title>
+<style>
+  :root {
+    --brand: #2f6df6; --brand-2: #6aa2ff; --ink: #17233d; --muted: #6b7a99;
+    --line: #e6ecf7; --card: #fff; --bg: #f4f7fe; --ok: #12b886; --warn: #f59f00; --err: #e03131;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink); background: var(--bg);
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    background-image: radial-gradient(circle at 12% 6%, #dfe9ff 0, transparent 42%),
+                      radial-gradient(circle at 88% 0%, #e8f7ff 0, transparent 38%);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 36px 20px 70px; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: .5px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .pill {
+    display: inline-flex; gap: 8px; align-items: center; margin-bottom: 12px; padding: 6px 14px;
+    border-radius: 999px; background: #e8efff; color: var(--brand); font-size: 12px; font-weight: 600;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px #d7f5ea; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab {
+    flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff;
+    font-size: 14px; font-weight: 700; color: var(--muted); cursor: pointer; font-family: inherit;
+  }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: transparent;
+    box-shadow: 0 12px 24px -16px rgba(47,109,246,.9); }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px;
+    box-shadow: 0 18px 40px -30px rgba(23,35,61,.45); }
+  .panel + .panel { margin-top: 16px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+  textarea, input[type=text] {
+    width: 100%; padding: 13px 15px; font-size: 15px; color: var(--ink); background: #fbfcff;
+    border: 1px solid var(--line); border-radius: 12px; outline: none; font-family: inherit; line-height: 1.6;
+  }
+  textarea { min-height: 96px; resize: vertical; }
+  textarea:focus, input:focus { border-color: var(--brand-2); box-shadow: 0 0 0 4px #e7efff; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  button.primary {
+    padding: 13px 24px; font-size: 15px; font-weight: 700; color: #fff; border: 0; border-radius: 12px;
+    cursor: pointer; background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    box-shadow: 0 12px 24px -14px rgba(47,109,246,.9); font-family: inherit;
+  }
+  button.primary[disabled] { opacity: .6; cursor: not-allowed; box-shadow: none; }
+  .tip { font-size: 12px; color: var(--muted); }
+  .status { margin-top: 12px; font-size: 13px; min-height: 20px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); } .status.run { color: var(--brand); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chip { padding: 5px 12px; border-radius: 999px; background: #eef3ff; color: #33509a; font-size: 12px; font-weight: 600; }
+  .chip.llm { background: #eafaf2; color: #0f7d5a; }
+  .chip.rule { background: #fff4e6; color: #b35c00; }
+  .grid { display: grid; gap: 14px; margin-top: 18px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  .card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff;
+    box-shadow: 0 14px 30px -26px rgba(23,35,61,.5); animation: pop .2s ease-out both; }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card h3 { margin: 0 0 6px; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+  .card p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.7; word-break: break-word; }
+  .score { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--ok); background: #eaf7f1;
+    border-radius: 999px; padding: 3px 9px; }
+  .empty { text-align: center; color: var(--muted); font-size: 13px; margin-top: 26px; }
+  footer { margin-top: 26px; text-align: center; font-size: 12px; color: var(--muted); }
+  code { background: #eef2fb; padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="pill"><span class="dot"></span><span id="boot">正在连接云端服务…</span></span>
+    <h1>校园失物招领</h1>
+    <p>登记用大模型理解你的描述，查询用本地索引毫秒级返回</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-reg">登记失物 / 招领</button>
+    <button class="tab" id="tab-qry">查找我的东西</button>
+  </div>
+
+  <section class="panel" id="panel-reg">
+    <label for="reg-text">用大白话描述就行</label>
+    <textarea id="reg-text" placeholder="例如：昨天下午在图书馆二楼自习，走的时候把一把黑色的长柄雨伞落在座位上了，伞柄有点磨损"></textarea>
+    <div class="row">
+      <input type="text" id="reg-contact" placeholder="联系方式（选填，展示时会自动脱敏）" style="flex:1 1 240px" />
+      <button class="primary" id="btn-reg">提交登记</button>
+    </div>
+    <div class="status" id="reg-status"></div>
+    <div class="chips" id="reg-chips"></div>
+  </section>
+
+  <section class="panel" id="panel-qry" style="display:none">
+    <label for="qry-text">想找什么？</label>
+    <div class="row" style="margin-top:0">
+      <input type="text" id="qry-text" placeholder="例如：黑色 雨伞 图书馆" style="flex:1 1 320px" />
+      <button class="primary" id="btn-qry">立即查找</button>
+    </div>
+    <div class="status" id="qry-status"></div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" style="display:none">没有匹配的记录，换个颜色或地点试试</div>
+  </section>
+
+  <footer>
+    登记走大模型（<code id="model-name">glm-4-flash</code>），查询走本地索引 · 联系方式自动脱敏
+  </footer>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const regStatus = $("reg-status"), qryStatus = $("qry-status");
+
+  function setStatus(el, text, kind) {
+    el.textContent = text || "";
+    el.className = "status" + (kind ? " " + kind : "");
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+
+  $("tab-reg").addEventListener("click", () => {
+    $("panel-reg").style.display = "block";
+    $("panel-qry").style.display = "none";
+    $("tab-reg").classList.add("active");
+    $("tab-qry").classList.remove("active");
+  });
+  $("tab-qry").addEventListener("click", () => {
+    $("panel-reg").style.display = "none";
+    $("panel-qry").style.display = "block";
+    $("tab-qry").classList.add("active");
+    $("tab-reg").classList.remove("active");
+    $("qry-text").focus();
+  });
+
+  async function boot() {
+    try {
+      const r = await fetch("/api/health", { cache: "no-store" });
+      const j = await r.json();
+      $("boot").textContent = "服务在线 · 已收录 " + j.items + " 条 · " + (j.llm_ready ? "大模型已就绪" : "大模型未配置（走本地规则）");
+      $("model-name").textContent = j.model || "-";
+    } catch (e) {
+      $("boot").textContent = "服务连接失败";
+    }
+  }
+
+  async function register() {
+    const text = $("reg-text").value.trim();
+    if (!text) { setStatus(regStatus, "先写一段描述吧", "err"); $("reg-text").focus(); return; }
+    const btn = $("btn-reg");
+    btn.disabled = true;
+    $("reg-chips").innerHTML = "";
+    setStatus(regStatus, "正在调用大模型理解你的描述，通常 2-6 秒…", "run");
+    try {
+      const r = await fetch("/api/register", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, contact: $("reg-contact").value.trim() })
+      });
+      const j = await r.json();
+      if (!r.ok || j.ok === false) throw new Error(j.error || ("接口返回 " + r.status));
+      const item = j.item;
+      const chips = [];
+      chips.push('<span class="chip">' + esc(item.kind === "lost" ? "失主寻找" : "好心人拾获") + "</span>");
+      chips.push('<span class="chip">类别：' + esc(item.category || "-") + "</span>");
+      if (item.color) chips.push('<span class="chip">颜色：' + esc(item.color) + "</span>");
+      if (item.place) chips.push('<span class="chip">地点：' + esc(item.place) + "</span>");
+      (item.features || []).forEach(function (f) { chips.push('<span class="chip">' + esc(f) + "</span>"); });
+      chips.push('<span class="chip ' + (j.llm_used ? "llm" : "rule") + '">' +
+        (j.llm_used ? "大模型抽取" : "本地规则抽取") + " · " + j.cost_ms + " ms</span>");
+      $("reg-chips").innerHTML = chips.join("");
+      setStatus(regStatus, "登记成功，编号 " + item.id, "ok");
+      $("reg-text").value = "";
+      $("reg-contact").value = "";
+      boot();
+    } catch (e) {
+      setStatus(regStatus, "登记失败：" + (e && e.message ? e.message : e), "err");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function search() {
+    const q = $("qry-text").value.trim();
+    if (!q) { setStatus(qryStatus, "输入要找的物品", "err"); $("qry-text").focus(); return; }
+    const btn = $("btn-qry");
+    btn.disabled = true;
+    setStatus(qryStatus, "查询中…", "run");
+    try {
+      const r = await fetch("/api/query?q=" + encodeURIComponent(q));
+      const j = await r.json();
+      if (!r.ok || j.ok === false) throw new Error(j.error || ("接口返回 " + r.status));
+      const grid = $("grid");
+      grid.innerHTML = "";
+      const cards = j.cards || [];
+      $("empty").style.display = cards.length ? "none" : "block";
+      cards.forEach(function (c, i) {
+        const el = document.createElement("article");
+        el.className = "card";
+        el.style.animationDelay = (i * 50) + "ms";
+        el.innerHTML = "<h3><span>" + esc(c.title) + '</span><span class="score">' + c.score + "</span></h3>" +
+          "<p>" + esc(c.detail) + "</p>";
+        grid.appendChild(el);
+      });
+      setStatus(qryStatus, "扫描 " + j.scanned + " 条记录，用时 " + j.cost_ms + " 毫秒", "ok");
+    } catch (e) {
+      setStatus(qryStatus, "查询失败：" + (e && e.message ? e.message : e), "err");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $("btn-reg").addEventListener("click", register);
+  $("btn-qry").addEventListener("click", search);
+  $("qry-text").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); search(); } });
+  boot();
+</script>
+</body>
+</html>
